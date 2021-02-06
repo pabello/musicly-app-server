@@ -132,5 +132,4 @@ dmypy.json
 
 # Project specific files
 *mbslave
-server_side/database/
 useful/
