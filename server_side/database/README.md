@@ -14,9 +14,15 @@ What it does is as follows:
 * grants privileges on `musicly` database and its objects to db_admin user
 
 
+**MusicBrainz database configuration guide: [mbdata][1]**
 ```
 sudo ./configure_db_storage.sh
 # prepare local copy of Musicbrainz database here
 sudo ./database_setup.sh
 echo "Everything should work just fine now. Enjoy :)"
 ```
+
+#### **Final database scheme:** ![image][database_scheme]
+
+[1]: https://github.com/lalinsky/mbdata
+[database_scheme]: database_scheme.png
