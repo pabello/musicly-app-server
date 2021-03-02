@@ -25,7 +25,7 @@ SECRET_KEY = 'a4w*o3p6nx=$(32eg(-4aiw8%6hd7s8hrc3%o6azje6f1j4a6g'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1']
 
 
 # Application definition
@@ -37,6 +37,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_filters',
+    'rest_framework',
+    'rest_framework.authtoken',
     'Musicly.apps.MusiclyConfig',
 ]
 
@@ -78,9 +81,13 @@ WSGI_APPLICATION = 'MusiclyServer.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'test_db',
         'NAME': 'musicly',
+        'OPTIONS': {
+            'options': '-c search_path=public,musicly'
+        },
         'USER': 'db_admin',
-        'PASSWORD': 'P&[aq3e9W>w1Fn}gDA)z#g]rvR>.]@cq',
+        'PASSWORD': 'db_admin_password',
         'HOST': '127.0.0.1',
         'PORT': '5432',
     }
@@ -125,3 +132,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_URL = '/static/'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        # 'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+    ),
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+    ),
+}

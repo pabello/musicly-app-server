@@ -53,37 +53,37 @@ CREATE TABLE account (
 	id bigserial NOT NULL,
 	username varchar(32) NOT NULL,
 	email varchar(254) NOT NULL,
-	password_hash varchar(64) NOT NULL,
-	confirmed bool NOT NULL,
+	password_hash char(64) NOT NULL,
+	confirmed bool NOT NULL DEFAULT 0,
 	last_login_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE liked_music (
+CREATE TABLE user_music (
+   	id bigserial NOT NULL,
 	account_id bigint NOT NULL,
 	recording_id bigint NOT NULL,
-	like_status int NOT NULL
+	like_status int NOT NULL,
+    	listen_count int NOT NULL
 );
 
 CREATE TABLE playlist (
 	id bigserial NOT NULL,
 	account_id bigint NOT NULL,
-	name varchar(64)
+	name varchar(64),
+	length int NOT NULL DEFAULT 0,
+	music_count int NOT NULL DEFAULT 0
 );
 
 CREATE TABLE playlist_music (
+    	id bigserial NOT NULL,
 	playlist_id bigint NOT NULL,
-	recording_id bigint NOT NULL
-);
-
-CREATE TABLE listened_to (
-	account_id bigint NOT NULL,
 	recording_id bigint NOT NULL,
-	listen_count int NOT NULL
+    	playlist_position int NOT NULL
 );
 
 CREATE TABLE password_reset_token (
 	account_id bigint NOT NULL,
-	token varchar NOT NULL,
+	token varchar(64) NOT NULL,
 	expires_at timestamp NOT NULL
 );
 
@@ -99,26 +99,16 @@ ALTER TABLE password_reset_token
 	REFERENCES account (id);
 ALTER TABLE password_reset_token ADD PRIMARY KEY (account_id);
 
-ALTER TABLE liked_music
+ALTER TABLE user_music
 	ADD CONSTRAINT account_id_fk
 	FOREIGN KEY (account_id)
 	REFERENCES account (id);
-ALTER TABLE liked_music
+ALTER TABLE user_music
 	ADD CONSTRAINT recording_id_fk
 	FOREIGN KEY (recording_id)
 	REFERENCES recording (id);
-ALTER TABLE liked_music ADD PRIMARY KEY (account_id, recording_id);
+ALTER TABLE user_music ADD PRIMARY KEY (id);
 		
-ALTER TABLE listened_to
-	ADD CONSTRAINT account_id_fk
-	FOREIGN KEY (account_id)
-	REFERENCES account (id);
-ALTER TABLE listened_to
-	ADD CONSTRAINT recording_id_fk
-	FOREIGN KEY (recording_id)
-	REFERENCES recording (id);
-ALTER TABLE listened_to ADD PRIMARY KEY (account_id, recording_id);
-
 ALTER TABLE playlist
 	ADD CONSTRAINT account_id_fk
 	FOREIGN KEY (account_id)
@@ -133,6 +123,7 @@ ALTER TABLE playlist_music
 	ADD CONSTRAINT recording_id_fk
 	FOREIGN KEY (recording_id)
 	REFERENCES recording (id);
+ALTER TABLE playlist_music ADD PRIMARY KEY (id);
 
 
 /*             VALUE CONSTRAINTS             */
@@ -152,9 +143,21 @@ ALTER TABLE password_reset_token
 	ADD CONSTRAINT expire_in_future
 	CHECK (expires_at > CURRENT_TIMESTAMP);
 
-ALTER TABLE listened_to
+ALTER TABLE user_music
 	ADD CONSTRAINT positive_listen_count
-	CHECK (listen_count > 0);
+	CHECK (listen_count >= 0);
+
+ALTER TABLE playlist_music
+	ADD CONSTRAINT positive_playlist_position
+	CHECK (playlist_position >= 0);
+
+ALTER TABLE playlist
+	ADD CONSTRAINT positive_length
+	CHECK (length >= 0);
+
+ALTER TABLE playlist
+	ADD CONSTRAINT positive_music_count
+	CHECK (music_count >= 0);
 
 
 
