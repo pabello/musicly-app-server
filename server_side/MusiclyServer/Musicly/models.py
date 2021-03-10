@@ -6,7 +6,9 @@
 #   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
 # Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
+from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
+from django.utils.timezone import now
 
 
 class Artist(models.Model):
@@ -16,7 +18,7 @@ class Artist(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'artist'
+        db_table = 'musicly_artist'
 
     def __str__(self):
         return self.stage_name
@@ -29,7 +31,7 @@ class Recording(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'recording'
+        db_table = 'musicly_recording'
 
     def __str__(self):
         data = {"id": self.id, "title": self.title}
@@ -43,26 +45,37 @@ class Performed(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'performed'
+        db_table = 'musicly_performed'
         unique_together = ('recording', 'artist')
 
     def __str__(self):
         return f'{self.artist} performed {self.recording}'
 
 
-class Account(models.Model):
+# class User(AbstractUser):
+#     pass
+
+
+class Account(AbstractUser):
     id = models.BigAutoField(primary_key=True)
-    username = models.CharField(unique=True, max_length=32)
-    email = models.CharField(unique=True, max_length=254)
-    password_hash = models.CharField(max_length=64)
-    confirmed = models.BooleanField()
-    last_login_time = models.DateTimeField()
+    username = models.CharField(unique=True, max_length=32, verbose_name='unique username')
+    email = models.CharField(unique=True, max_length=254, verbose_name='email address')
+    password = models.CharField(max_length=128, verbose_name='hashed password')
+    is_active = models.BooleanField(default=True, verbose_name='account active')
+    last_login = models.DateTimeField(default=now, verbose_name='last login time')
+    date_joined = models.DateTimeField(default=now, verbose_name='date joined')
 
     music = models.ManyToManyField(Recording, through='UserMusic')
 
+    is_superuser = None
+    first_name = None
+    last_name = None
+    is_staff = None
+    groups = None
+
     class Meta:
-        managed = False
-        db_table = 'account'
+        managed = True
+        db_table = 'musicly_account'
 
     def __str__(self):
         return f'({self.id}) {self.username}'
@@ -76,8 +89,8 @@ class PasswordResetToken(models.Model):
     expires_at = models.DateTimeField()
 
     class Meta:
-        managed = False
-        db_table = 'password_reset_token'
+        managed = True
+        db_table = 'musicly_password_reset_token'
 
     def __str__(self):
         return f'token for user {self.account}'
@@ -93,8 +106,8 @@ class Playlist(models.Model):
     recording = models.ManyToManyField(Recording, related_name='belong_to_playlist', through='PlaylistMusic')
 
     class Meta:
-        managed = False
-        db_table = 'playlist'
+        managed = True
+        db_table = 'musicly_playlist'
 
     def __str__(self):
         return self.name
@@ -107,8 +120,8 @@ class PlaylistMusic(models.Model):
     playlist_position = models.IntegerField('Position in playlist')
 
     class Meta:
-        managed = False
-        db_table = 'playlist_music'
+        managed = True
+        db_table = 'musicly_playlist_music'
         unique_together = ('playlist', 'playlist_position')
 
     def __str__(self):
@@ -123,8 +136,8 @@ class UserMusic(models.Model):
     listen_count = models.IntegerField()
 
     class Meta:
-        managed = False
-        db_table = 'user_music'
+        managed = True
+        db_table = 'musicly_user_music'
         unique_together = ('account', 'recording')
 
     def __str__(self):

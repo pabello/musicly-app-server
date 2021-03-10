@@ -25,7 +25,7 @@ SECRET_KEY = 'a4w*o3p6nx=$(32eg(-4aiw8%6hd7s8hrc3%o6azje6f1j4a6g'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 
 # Application definition
@@ -93,7 +93,9 @@ DATABASES = {
     }
 }
 
-
+AUTH_USER_MODEL = 'Musicly.Account'
+LOGIN_URL = '/admin/login/'
+# LOGIN_URL = '/api/login/'
 
 # Password validation
 # https://docs.djangoproject.com/en/3.1/ref/settings/#auth-password-validators
@@ -134,8 +136,10 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        # 'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.TokenAuthentication',
     ),
     'DEFAULT_FILTER_BACKENDS': (

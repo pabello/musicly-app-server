@@ -53,9 +53,9 @@ CREATE TABLE account (
 	id bigserial NOT NULL,
 	username varchar(32) NOT NULL,
 	email varchar(254) NOT NULL,
-	password_hash char(64) NOT NULL,
-	confirmed bool NOT NULL DEFAULT 0,
-	last_login_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+	password char(64) NOT NULL,
+	confirmed bool NOT NULL DEFAULT false,
+	last_login timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE user_music (
