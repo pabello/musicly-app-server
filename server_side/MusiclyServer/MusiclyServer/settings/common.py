@@ -146,3 +146,10 @@ REST_FRAMEWORK = {
         'django_filters.rest_framework.DjangoFilterBackend',
     ),
 }
+
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST_USER = 'your.reliable.bot.friend@gmail.com'
+EMAIL_HOST_PASSWORD = 'hrduxueufjfevecn'
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = True
+EMAIL_PORT = 465
