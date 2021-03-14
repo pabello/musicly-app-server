@@ -1,7 +1,6 @@
 from django.shortcuts import get_object_or_404, get_list_or_404
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from json import loads as load_json
 from ..models import Account, PasswordResetToken
 from ..serializers import AccountSerializer, AccountDetailsSerializer, AccountLifecycleSerializer
 from password_strength import PasswordPolicy
@@ -36,7 +35,7 @@ def _password_secure(password: str):
 @api_view(['POST'])
 @permission_classes([])
 def register(request):
-    account_info = load_json(request.body)
+    account_info = request.data
     serializer = AccountLifecycleSerializer(data=account_info)
 
     if serializer.is_valid():
@@ -56,7 +55,7 @@ def register(request):
 @api_view(['POST'])
 @permission_classes([])
 def create_reset_token(request):
-    account_info = load_json(request.body)
+    account_info = request.data
     try:
         account = Account.objects.get(username=account_info['username'])
     except Account.DoesNotExist:
@@ -99,7 +98,7 @@ def create_reset_token(request):
 @api_view(['PATCH'])
 @permission_classes([])
 def change_password(request):
-    data = load_json(request.body)
+    data = request.data
 
     missing_data = {}
     for argument in ['password_reset_token', 'new_password']:
@@ -133,26 +132,24 @@ def change_password(request):
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class AccountViewSet(viewsets.ViewSet):
-    @staticmethod
-    def retrieve(request, pk):
-        account = get_object_or_404(Account, pk=pk)
-        serializer = AccountDetailsSerializer(account)
-        return Response(serializer.data)
+@api_view(['GET'])
+def account_details(request):
+    account = request.user
+    serializer = AccountDetailsSerializer(account)
+    return Response(serializer.data)
 
-    @staticmethod
-    def destroy(request, pk):
-        try:
-            account = Account.objects.get(pk=pk)
-        except Account.DoesNotExist:
-            return Response(status.HTTP_404_NOT_FOUND)
 
-        # TODO: validation if the deleter owns the account
+@api_view(['DELETE'])
+def delete_account(request):
+    try:
+        account = request.user
+    except Account.DoesNotExist:
+        return Response(status.HTTP_404_NOT_FOUND)
 
-        if account.delete():
-            return Response(status.HTTP_204_NO_CONTENT)
-        else:
-            return Response(status.HTTP_500_INTERNAL_SERVER_ERROR)
+    if account.delete():
+        return Response(status.HTTP_204_NO_CONTENT)
+    else:
+        return Response(status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
