@@ -7,16 +7,17 @@ from ..serializers import AccountSerializer, AccountDetailsSerializer, AccountLi
 from password_strength import PasswordPolicy
 from rest_framework.decorators import api_view, permission_classes
 
+import django.utils.timezone as time
 from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-import django.utils.timezone as time
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
-
+from django.db import DatabaseError
 
 from rest_framework.authtoken.models import Token
 from random import getrandbits
+from hashlib import sha256
 
 
 password_policy = PasswordPolicy.from_names(
@@ -36,6 +37,7 @@ def _password_secure(password: str):
 @api_view(['POST'])
 @permission_classes([])
 def register(request):
+    server_address = 'http://127.0.0.1:8000'  # Could be imported from some django constant probably
     account_info = load_json(request.body)
     serializer = AccountLifecycleSerializer(data=account_info)
 
@@ -46,11 +48,40 @@ def register(request):
         try:
             account.save()
             token = {"token": Token.objects.get(user=account).key}
-        except ValueError:
-            pass
+        except DatabaseError:
+            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        send_mail(
+            subject='Email confirmation',
+            message='This is an automated email confirmation message from Musicly.\n\n'
+                    'Go to the link below to confirm your email address for Musicly account.'
+                    f'{server_address}/api/confirmEmail/{account.id}/{sha256(account.email)}\n',
+            html_message=render_to_string('password_reset_mail.html', {'server_address': server_address,
+                                                                       'account_id': account.id,
+                                                                       'token': sha256(account.email)}),
+            from_email='"noreply@musicly.com" <noreply@musicly.com>',
+            recipient_list=[account.email],
+            fail_silently=False
+        )
         return Response(status=status.HTTP_201_CREATED, data=token)
     else:
         return Response(serializer.errors)
+
+
+@api_view(['PATCH'])
+@permission_classes([])
+def confirm_email(request, pk, token):
+    user = Account.objects.get(pk=pk)
+    confirmation_token = sha256(user.email)
+    if token == confirmation_token:
+        user.email_confirmed = True
+        try:
+            user.save()
+        except DatabaseError:
+            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            data={'details': 'server error, could not confirm email.'})
+    else:
+        return Response(status=status.HTTP_403_FORBIDDEN, data={'details': 'incorrect token provided.'})
 
 
 @api_view(['POST'])
@@ -78,7 +109,7 @@ def create_reset_token(request):
 
     try:
         reset_token.save()
-    except Exception as e:
+    except DatabaseError:
         return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR, data={'details': 'could not create a token.'})
 
     # TODO: implement possibility for password change when you are logged in
@@ -90,7 +121,7 @@ def create_reset_token(request):
                 f'{reset_token.token}\n',
         html_message=render_to_string('password_reset_mail.html', {'token': reset_token.token}),
         from_email='"noreply@musicly.com" <noreply@musicly.com>',
-        recipient_list=['waclawiak.pawel@wp.pl'],
+        recipient_list=[account.email],
         fail_silently=False
     )
     return Response(status=status.HTTP_201_CREATED)
