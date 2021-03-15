@@ -39,13 +39,13 @@ class AccountSerializer(serializers.ModelSerializer):
 class AccountDetailsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Account
-        fields = ['id', 'username', 'email', 'confirmed', 'last_login_time']
+        fields = ['id', 'username', 'email', 'is_active', 'email_confirmed', 'last_login']
 
 
 class AccountLifecycleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Account
-        fields = ['id', 'username', 'email', 'password_hash', 'confirmed', 'last_login_time']
+        fields = ['id', 'username', 'email', 'password', 'is_active', 'email_confirmed']
 
 
 class PlaylistSerializer(serializers.ModelSerializer):
