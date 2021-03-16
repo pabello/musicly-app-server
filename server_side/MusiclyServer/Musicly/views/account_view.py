@@ -6,12 +6,12 @@ from password_strength import PasswordPolicy
 from rest_framework.decorators import api_view, permission_classes
 
 import django.utils.timezone as time
+from django.conf import settings
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.db import DatabaseError
-from django.db.models.signals import post_save
-from django.conf import settings
-from django.dispatch import receiver
 
 from rest_framework.authtoken.models import Token
 from random import getrandbits
@@ -37,8 +37,8 @@ def _password_secure(password: str):
 def register(request):
     server_address = 'http://127.0.0.1:8000'  # Could be imported from some django constant probably
     account_info = request.data
-
     serializer = AccountLifecycleSerializer(data=account_info)
+
     if serializer.is_valid():
         account = Account.objects.create(username=account_info['username'],
                                          email=account_info['email'])
@@ -53,10 +53,11 @@ def register(request):
             subject='Email confirmation',
             message='This is an automated email confirmation message from Musicly.\n\n'
                     'Go to the link below to confirm your email address for Musicly account.'
-                    f'{server_address}/api/confirmEmail/{account.id}/{sha256(account.email)}\n',
+                    f'{server_address}/api/confirmEmail/{account.id}/{sha256(account.email.encode()).hexdigest()}\n',
             html_message=render_to_string('password_reset_mail.html', {'server_address': server_address,
                                                                        'account_id': account.id,
-                                                                       'token': sha256(account.email)}),
+                                                                       'token': sha256(
+                                                                           account.email.encode()).hexdigest()}),
             from_email='"noreply@musicly.com" <noreply@musicly.com>',
             recipient_list=[account.email],
             fail_silently=False
@@ -70,7 +71,7 @@ def register(request):
 @permission_classes([])
 def confirm_email(request, pk, token):
     user = Account.objects.get(pk=pk)
-    confirmation_token = sha256(user.email)
+    confirmation_token = sha256(user.email.encode()).hexdigest()
     if token == confirmation_token:
         user.email_confirmed = True
         try:
@@ -102,7 +103,6 @@ def create_reset_token(request):
         pass
 
     token = '%032x' % getrandbits(256)
-    print(token)
     reset_token = PasswordResetToken(account=account, token=token, expires_at=time.now() + time.timedelta(hours=48))
 
     try:

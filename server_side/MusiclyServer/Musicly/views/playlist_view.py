@@ -3,7 +3,7 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from ..models import Playlist, PlaylistMusic, Recording
 from ..serializers import PlaylistSerializer, PlaylistMusicSerializer, PlaylistMusicListSerializer
-from django.db import transaction
+from django.db import transaction, DatabaseError
 
 
 def get_playlist_music_count(playlist: Playlist):
@@ -24,7 +24,6 @@ class PlaylistViewSet(viewsets.ViewSet):
         if playlist.account != request.user:
             return Response(status=status.HTTP_403_FORBIDDEN, data={'details': 'not the owner of the playlist.'})
         serializer = PlaylistMusicListSerializer(playlist)
-        print(serializer.data)
         return Response(serializer.data)
 
     @staticmethod
@@ -50,7 +49,7 @@ class PlaylistViewSet(viewsets.ViewSet):
         try:
             playlist.save()
             return Response(status=status.HTTP_200_OK, data={'details': 'playlist name updated.'})
-        except Exception:
+        except DatabaseError:
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             data={'details': 'server error, could not update the playlist.'})
 
@@ -63,7 +62,7 @@ class PlaylistViewSet(viewsets.ViewSet):
         try:
             playlist.delete()
             return Response(status=status.HTTP_200_OK, data={'details': 'playlist deleted.'})
-        except Exception:
+        except DatabaseError:
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             data={'details': 'server error, could not delete the playlist.'})
 
@@ -97,7 +96,6 @@ class PlaylistMusicViewSet(viewsets.ViewSet):
 
     @staticmethod
     def create(request):
-        # return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR, data={'details': 'dupa'})
         try:
             playlist = Playlist.objects.get(pk=request.data['playlist_id'])
             recording = Recording.objects.get(pk=request.data['recording_id'])
@@ -115,7 +113,6 @@ class PlaylistMusicViewSet(viewsets.ViewSet):
             'recording': recording.id,
             'playlist_position': music_count+1
         }
-        print(playlist_music)
 
         serializer = PlaylistMusicSerializer(data=playlist_music)
         if serializer.is_valid():

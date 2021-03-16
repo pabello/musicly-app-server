@@ -52,10 +52,6 @@ class Performed(models.Model):
         return f'{self.artist} performed {self.recording}'
 
 
-# class User(AbstractUser):
-#     pass
-
-
 class Account(AbstractUser):
     id = models.BigAutoField(primary_key=True)
     username = models.CharField(unique=True, max_length=32, verbose_name='unique username')
