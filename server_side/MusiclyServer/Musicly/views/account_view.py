@@ -1,17 +1,30 @@
 from rest_framework import status
 from rest_framework.response import Response
 from ..models import Account, PasswordResetToken
+<<<<<<< HEAD
 from ..serializers import AccountDetailsSerializer, AccountLifecycleSerializer
+=======
+from ..serializers import AccountSerializer, AccountDetailsSerializer, AccountLifecycleSerializer
+>>>>>>> main
 from password_strength import PasswordPolicy
 from rest_framework.decorators import api_view, permission_classes
 
 import django.utils.timezone as time
+<<<<<<< HEAD
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.db import DatabaseError
 from django.db.models.signals import post_save
 from django.conf import settings
 from django.dispatch import receiver
+=======
+from django.conf import settings
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.db import DatabaseError
+>>>>>>> main
 
 from rest_framework.authtoken.models import Token
 from random import getrandbits
@@ -37,8 +50,8 @@ def _password_secure(password: str):
 def register(request):
     server_address = 'http://127.0.0.1:8000'  # Could be imported from some django constant probably
     account_info = request.data
-
     serializer = AccountLifecycleSerializer(data=account_info)
+
     if serializer.is_valid():
         account = Account.objects.create(username=account_info['username'],
                                          email=account_info['email'])
@@ -102,7 +115,6 @@ def create_reset_token(request):
         pass
 
     token = '%032x' % getrandbits(256)
-    print(token)
     reset_token = PasswordResetToken(account=account, token=token, expires_at=time.now() + time.timedelta(hours=48))
 
     try:
