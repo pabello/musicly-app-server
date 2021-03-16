@@ -54,20 +54,20 @@ def register(request):
             message='This is an automated email confirmation message from Musicly.\n\n'
                     'Go to the link below to confirm your email address for Musicly account.'
                     f'{server_address}/api/confirmEmail/{account.id}/{sha256(account.email.encode()).hexdigest()}\n',
-            html_message=render_to_string('password_reset_mail.html', {'server_address': server_address,
-                                                                       'account_id': account.id,
-                                                                       'token': sha256(
-                                                                           account.email.encode()).hexdigest()}),
+            html_message=render_to_string('email_confirm_mail.html', {'server_address': server_address,
+                                                                      'account_id': account.id,
+                                                                      'token': sha256(
+                                                                          account.email.encode()).hexdigest()}),
             from_email='"noreply@musicly.com" <noreply@musicly.com>',
             recipient_list=[account.email],
             fail_silently=False
         )
         return Response(status=status.HTTP_201_CREATED, data=token)
     else:
-        return Response(serializer.errors)
+        return Response(status=status.HTTP_403_FORBIDDEN, data=serializer.errors)
 
 
-@api_view(['PATCH'])
+@api_view(['GET'])
 @permission_classes([])
 def confirm_email(request, pk, token):
     user = Account.objects.get(pk=pk)
@@ -76,6 +76,7 @@ def confirm_email(request, pk, token):
         user.email_confirmed = True
         try:
             user.save()
+            return Response(status=status.HTTP_200_OK, data={'details': 'email address confirmed.'})
         except DatabaseError:
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             data={'details': 'server error, could not confirm email.'})
@@ -166,7 +167,7 @@ def change_password(request):
 def account_details(request):
     account = request.user
     serializer = AccountDetailsSerializer(account)
-    return Response(serializer.data)
+    return Response(status=status.HTTP_200_OK, data=serializer.data)
 
 
 @api_view(['DELETE'])
@@ -174,12 +175,13 @@ def delete_account(request):
     try:
         account = request.user
     except Account.DoesNotExist:
-        return Response(status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_404_NOT_FOUND, data={'details': 'account does not exist.'})
 
     if account.delete():
-        return Response(status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_200_OK, data={'details': 'account deleted.'})
     else:
-        return Response(status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        data={'details': 'server error, could not delete the account.'})
 
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
