@@ -1,9 +1,8 @@
 from django.urls import path, include
-from .views_old import headers, json_input
 from .views.music_view import ArtistViewSet, RecodingViewSet
 from .views.account_view import register, change_password, create_reset_token, account_details, delete_account
 from .views.playlist_view import PlaylistViewSet, PlaylistMusicViewSet
-from .views.user_music_view import user_music_list
+from .views.user_music_view import user_music_list, add_music_reaction
 from rest_framework.routers import DefaultRouter
 from rest_framework.authtoken.views import obtain_auth_token
 
@@ -21,5 +20,6 @@ urlpatterns = [
     path('changePassword/', change_password, name='changePassword'),
     path('resetPassword/', create_reset_token, name='resetPassword'),
     path('userMusic/', user_music_list, name='userMusic'),
+    path('userMusic/<int:pk>/', add_music_reaction, name='musicReaction'),
     path('', include(router.urls))
 ]
