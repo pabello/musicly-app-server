@@ -52,10 +52,6 @@ class Performed(models.Model):
         return f'{self.artist} performed {self.recording}'
 
 
-# class User(AbstractUser):
-#     pass
-
-
 class Account(AbstractUser):
     id = models.BigAutoField(primary_key=True)
     username = models.CharField(unique=True, max_length=32, verbose_name='unique username')
@@ -64,6 +60,7 @@ class Account(AbstractUser):
     is_active = models.BooleanField(default=True, verbose_name='account active')
     last_login = models.DateTimeField(default=now, verbose_name='last login time')
     date_joined = models.DateTimeField(default=now, verbose_name='date joined')
+    email_confirmed = models.BooleanField(default=False, verbose_name='email confirmed')
 
     music = models.ManyToManyField(Recording, through='UserMusic')
 
