@@ -52,10 +52,6 @@ class Performed(models.Model):
         return f'{self.artist} performed {self.recording}'
 
 
-# class User(AbstractUser):
-#     pass
-
-
 class Account(AbstractUser):
     id = models.BigAutoField(primary_key=True)
     username = models.CharField(unique=True, max_length=32, verbose_name='unique username')
@@ -100,15 +96,16 @@ class PasswordResetToken(models.Model):
 class Playlist(models.Model):
     id = models.BigAutoField(primary_key=True)
     account = models.ForeignKey(Account, models.CASCADE)
-    name = models.CharField(max_length=64, blank=True)
-    length = models.IntegerField('Total playtime of the playlist playlist')
-    music_count = models.IntegerField('Number of recordings in the playlist')
+    name = models.CharField(max_length=64, blank=False, null=False)
+    length = models.IntegerField(default=0, verbose_name='Total playtime of the playlist playlist')
+    music_count = models.IntegerField(default=0, verbose_name='Number of recordings in the playlist')
 
-    recording = models.ManyToManyField(Recording, related_name='belong_to_playlist', through='PlaylistMusic')
+    recordings = models.ManyToManyField(Recording, related_name='belong_to_playlist', through='PlaylistMusic')
 
     class Meta:
         managed = True
         db_table = 'musicly_playlist'
+        unique_together = ('account', 'name')
 
     def __str__(self):
         return self.name
@@ -124,9 +121,10 @@ class PlaylistMusic(models.Model):
         managed = True
         db_table = 'musicly_playlist_music'
         unique_together = ('playlist', 'playlist_position')
+        ordering = ['playlist_position']  # Might require unique set (playlist, position) as position is not unique
 
     def __str__(self):
-        return f'{self.recording} in playlist {self.playlist}'
+        return f'({self.id}) {self.recording} in playlist {self.playlist} on position {self.playlist_position}'
 
 
 class UserMusic(models.Model):

@@ -1,9 +1,7 @@
-from django.shortcuts import get_object_or_404, get_list_or_404
-from rest_framework import viewsets, status
+from rest_framework import status
 from rest_framework.response import Response
-from json import loads as load_json
 from ..models import Account, PasswordResetToken
-from ..serializers import AccountSerializer, AccountDetailsSerializer, AccountLifecycleSerializer
+from ..serializers import AccountDetailsSerializer, AccountLifecycleSerializer
 from password_strength import PasswordPolicy
 from rest_framework.decorators import api_view, permission_classes
 
@@ -38,7 +36,7 @@ def _password_secure(password: str):
 @permission_classes([])
 def register(request):
     server_address = 'http://127.0.0.1:8000'  # Could be imported from some django constant probably
-    account_info = load_json(request.body)
+    account_info = request.data
     serializer = AccountLifecycleSerializer(data=account_info)
 
     if serializer.is_valid():
@@ -55,10 +53,11 @@ def register(request):
             subject='Email confirmation',
             message='This is an automated email confirmation message from Musicly.\n\n'
                     'Go to the link below to confirm your email address for Musicly account.'
-                    f'{server_address}/api/confirmEmail/{account.id}/{sha256(account.email)}\n',
+                    f'{server_address}/api/confirmEmail/{account.id}/{sha256(account.email.encode()).hexdigest()}\n',
             html_message=render_to_string('password_reset_mail.html', {'server_address': server_address,
                                                                        'account_id': account.id,
-                                                                       'token': sha256(account.email)}),
+                                                                       'token': sha256(
+                                                                           account.email.encode()).hexdigest()}),
             from_email='"noreply@musicly.com" <noreply@musicly.com>',
             recipient_list=[account.email],
             fail_silently=False
@@ -72,7 +71,7 @@ def register(request):
 @permission_classes([])
 def confirm_email(request, pk, token):
     user = Account.objects.get(pk=pk)
-    confirmation_token = sha256(user.email)
+    confirmation_token = sha256(user.email.encode()).hexdigest()
     if token == confirmation_token:
         user.email_confirmed = True
         try:
@@ -87,7 +86,7 @@ def confirm_email(request, pk, token):
 @api_view(['POST'])
 @permission_classes([])
 def create_reset_token(request):
-    account_info = load_json(request.body)
+    account_info = request.data
     try:
         account = Account.objects.get(username=account_info['username'])
     except Account.DoesNotExist:
@@ -104,7 +103,6 @@ def create_reset_token(request):
         pass
 
     token = '%032x' % getrandbits(256)
-    print(token)
     reset_token = PasswordResetToken(account=account, token=token, expires_at=time.now() + time.timedelta(hours=48))
 
     try:
@@ -121,7 +119,7 @@ def create_reset_token(request):
                 f'{reset_token.token}\n',
         html_message=render_to_string('password_reset_mail.html', {'token': reset_token.token}),
         from_email='"noreply@musicly.com" <noreply@musicly.com>',
-        recipient_list=[account.email],
+        recipient_list=['waclawiak.pawel@wp.pl'],
         fail_silently=False
     )
     return Response(status=status.HTTP_201_CREATED)
@@ -130,7 +128,7 @@ def create_reset_token(request):
 @api_view(['PATCH'])
 @permission_classes([])
 def change_password(request):
-    data = load_json(request.body)
+    data = request.data
 
     missing_data = {}
     for argument in ['password_reset_token', 'new_password']:
@@ -164,26 +162,24 @@ def change_password(request):
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class AccountViewSet(viewsets.ViewSet):
-    @staticmethod
-    def retrieve(request, pk):
-        account = get_object_or_404(Account, pk=pk)
-        serializer = AccountDetailsSerializer(account)
-        return Response(serializer.data)
+@api_view(['GET'])
+def account_details(request):
+    account = request.user
+    serializer = AccountDetailsSerializer(account)
+    return Response(serializer.data)
 
-    @staticmethod
-    def destroy(request, pk):
-        try:
-            account = Account.objects.get(pk=pk)
-        except Account.DoesNotExist:
-            return Response(status.HTTP_404_NOT_FOUND)
 
-        # TODO: validation if the deleter owns the account
+@api_view(['DELETE'])
+def delete_account(request):
+    try:
+        account = request.user
+    except Account.DoesNotExist:
+        return Response(status.HTTP_404_NOT_FOUND)
 
-        if account.delete():
-            return Response(status.HTTP_204_NO_CONTENT)
-        else:
-            return Response(status.HTTP_500_INTERNAL_SERVER_ERROR)
+    if account.delete():
+        return Response(status.HTTP_204_NO_CONTENT)
+    else:
+        return Response(status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)

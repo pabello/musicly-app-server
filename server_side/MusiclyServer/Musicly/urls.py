@@ -1,23 +1,25 @@
 from django.urls import path, include
 from .views_old import headers, json_input
 from .views.music_view import ArtistViewSet, RecodingViewSet
-from .views.account_view import AccountViewSet, register, change_password, create_reset_token
-from .views.playlist_view import PlaylistViewSet
+from .views.account_view import register, change_password, create_reset_token, account_details, delete_account
+from .views.playlist_view import PlaylistViewSet, PlaylistMusicViewSet
+from .views.user_music_view import user_music_list
 from rest_framework.routers import DefaultRouter
 from rest_framework.authtoken.views import obtain_auth_token
 
 router = DefaultRouter()
 router.register(r'artist', ArtistViewSet, 'artist')
 router.register(r'recording', RecodingViewSet, 'recording')
-router.register(r'account', AccountViewSet, 'account')
 router.register(r'playlist', PlaylistViewSet, 'playlist')
+router.register(r'playlistMusic', PlaylistMusicViewSet, 'playlistMusic')
 
 urlpatterns = [
-    path('testing/headers/', headers),  # delete this later
-    path('testing/json/', json_input),  # delete this later
+    path('account/', account_details, name='accountDetails'),
+    path('account/delete/', delete_account, name='deleteAccount'),
     path('register/', register, name='register'),
     path('login/', obtain_auth_token, name='login'),
     path('changePassword/', change_password, name='changePassword'),
     path('resetPassword/', create_reset_token, name='resetPassword'),
+    path('userMusic/', user_music_list, name='userMusic'),
     path('', include(router.urls))
 ]
