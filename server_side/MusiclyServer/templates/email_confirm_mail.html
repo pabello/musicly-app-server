@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <p>
+        This is an automated email confirmation message from Musicly.
+    </p>
+    <p>
+        <b>Go to the link below to confirm your email address for Musicly account.</b><br>
+        <a id="token" href="{{ server_address }}/api/confirmEmail/{{ account_id }}/{{ token }}">
+            Confirm email
+        </a>
+    </p>
+</body>
+</html>
+

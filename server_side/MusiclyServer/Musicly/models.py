@@ -64,6 +64,7 @@ class Account(AbstractUser):
     is_active = models.BooleanField(default=True, verbose_name='account active')
     last_login = models.DateTimeField(default=now, verbose_name='last login time')
     date_joined = models.DateTimeField(default=now, verbose_name='date joined')
+    email_confirmed = models.BooleanField(default=False, verbose_name='email confirmed')
 
     music = models.ManyToManyField(Recording, through='UserMusic')
 
