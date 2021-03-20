@@ -55,7 +55,7 @@ class Performed(models.Model):
 class Account(AbstractUser):
     id = models.BigAutoField(primary_key=True)
     username = models.CharField(unique=True, max_length=32, verbose_name='unique username')
-    email = models.CharField(unique=True, max_length=254, verbose_name='email address')
+    email = models.EmailField(unique=True, max_length=254, verbose_name='email address')
     password = models.CharField(max_length=128, verbose_name='hashed password')
     is_active = models.BooleanField(default=True, verbose_name='account active')
     last_login = models.DateTimeField(default=now, verbose_name='last login time')
