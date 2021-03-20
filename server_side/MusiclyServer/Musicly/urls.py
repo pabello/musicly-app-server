@@ -1,6 +1,7 @@
 from django.urls import path, include
 from .views.music_view import ArtistViewSet, RecodingViewSet
-from .views.account_view import register, change_password, create_reset_token, account_details, delete_account
+from .views.account_view import register, change_password, create_reset_token, account_details, delete_account, \
+    confirm_email
 from .views.playlist_view import PlaylistViewSet, PlaylistMusicViewSet
 from .views.user_music_view import user_music_list, add_music_reaction
 from .views.recommendations_view import recommendation_list, next_recommendation
@@ -20,6 +21,7 @@ urlpatterns = [
     path('login/', obtain_auth_token, name='login'),
     path('changePassword/', change_password, name='changePassword'),
     path('resetPassword/', create_reset_token, name='resetPassword'),
+    path('confirmEmail/<int:pk>/<str:token>/', confirm_email, name='confirmEmail'),
     path('userMusic/', user_music_list, name='userMusic'),
     path('userMusic/<int:pk>/', add_music_reaction, name='musicReaction'),
     path('recommendations/', recommendation_list, name='recommendationList'),

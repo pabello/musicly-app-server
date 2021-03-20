@@ -133,7 +133,9 @@ class PlaylistMusicViewSet(viewsets.ViewSet):
             return e.response
 
         old_position = playlist_music.playlist_position
-        new_position = request.data['new_position']
+        new_position = min(max(request.data['new_position'], 1), playlist.music_count)
+        if new_position == old_position:
+            return Response(status=status.HTTP_200_OK, data={'details': 'new position the same as the old one.'})
 
         change = 1 if old_position > new_position else -1
         music_list = PlaylistMusic.objects.filter(playlist_id=playlist.id,
