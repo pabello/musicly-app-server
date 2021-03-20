@@ -16,6 +16,7 @@ from django.db import DatabaseError
 from rest_framework.authtoken.models import Token
 from random import getrandbits
 from hashlib import sha256
+from smtplib import SMTPException
 
 
 password_policy = PasswordPolicy.from_names(
@@ -32,12 +33,41 @@ def _password_secure(password: str):
         return False
 
 
+def send_confirmation_mail(account: Account, server_address):
+    send_mail(
+        subject='Email confirmation',
+        message='This is an automated email confirmation message from Musicly.\n\n'
+                'Go to the link below to confirm your email address for Musicly account.'
+                f'{server_address}/api/confirmEmail/{account.id}/{sha256(account.email.encode()).hexdigest()}\n',
+        html_message=render_to_string('email_confirm_mail.html', {'server_address': server_address,
+                                                                  'account_id': account.id,
+                                                                  'token': sha256(account.email.encode()).hexdigest()}),
+        from_email='"noreply@musicly.com" <noreply@musicly.com>',
+        recipient_list=[account.email],
+        fail_silently=False
+    )
+
+
+@api_view(['GET'])
+def resend_confirmation_mail(request):
+    server_address = 'http://' + request.get_host()
+    send_confirmation_mail(request.user, server_address)
+    return Response(status=status.HTTP_200_OK, data={'details': 'email has been sent.'})
+
+
 @api_view(['POST'])
 @permission_classes([])
 def register(request):
-    server_address = 'http://127.0.0.1:8000'  # Could be imported from some django constant probably
+    server_address = 'http://' + request.get_host()
     account_info = request.data
     serializer = AccountLifecycleSerializer(data=account_info)
+
+    restricted_chars = '@\/\'"'
+    for char in restricted_chars:
+        print(char)
+        if char in account_info['username']:
+            return Response(status=status.HTTP_403_FORBIDDEN,
+                            data={'details': f'username cannot contain this set of characters: {restricted_chars}'})
 
     if serializer.is_valid():
         account = Account.objects.create(username=account_info['username'],
@@ -49,19 +79,11 @@ def register(request):
         except DatabaseError:
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        send_mail(
-            subject='Email confirmation',
-            message='This is an automated email confirmation message from Musicly.\n\n'
-                    'Go to the link below to confirm your email address for Musicly account.'
-                    f'{server_address}/api/confirmEmail/{account.id}/{sha256(account.email.encode()).hexdigest()}\n',
-            html_message=render_to_string('email_confirm_mail.html', {'server_address': server_address,
-                                                                      'account_id': account.id,
-                                                                      'token': sha256(
-                                                                          account.email.encode()).hexdigest()}),
-            from_email='"noreply@musicly.com" <noreply@musicly.com>',
-            recipient_list=[account.email],
-            fail_silently=False
-        )
+        try:
+            send_confirmation_mail(account, server_address)
+        except SMTPException:
+            return Response(status=status.HTTP_201_CREATED, data={'details': 'account created',
+                                                                  'errors': 'could not send confirmation email'})
         return Response(status=status.HTTP_201_CREATED, data=token)
     else:
         return Response(status=status.HTTP_403_FORBIDDEN, data=serializer.errors)

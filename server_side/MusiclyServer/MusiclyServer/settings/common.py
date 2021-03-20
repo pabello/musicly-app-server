@@ -94,7 +94,7 @@ DATABASES = {
 }
 
 AUTH_USER_MODEL = 'Musicly.Account'
-LOGIN_URL = '/admin/login/'
+# LOGIN_URL = '/admin/login/'
 # LOGIN_URL = '/api/login/'
 
 # Password validation
@@ -120,13 +120,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/3.1/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_L10N = True
-
 USE_TZ = True
 
 
@@ -134,6 +130,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_URL = '/static/'
+# SECURE_SSL_REDIRECT = True  # Prod only
+# SESSION_COOKIE_SECURE = True
+# CSRF_COOKIE_SECURE = True
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
