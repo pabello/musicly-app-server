@@ -134,3 +134,5 @@ dmypy.json
 *mbslave
 useful/
 mb-env/
+musicly-env/
+*temp_*
