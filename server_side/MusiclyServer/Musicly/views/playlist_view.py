@@ -33,8 +33,10 @@ class PlaylistViewSet(viewsets.ViewSet):
         serializer = PlaylistSerializer(data=playlist_data)
 
         if serializer.is_valid():
-            serializer.save()
-            return Response(status=status.HTTP_201_CREATED, data={'details': 'playlist created.'})
+            playlist_id = serializer.save().id
+            print(playlist_id)
+            return Response(status=status.HTTP_201_CREATED, data={'details': 'playlist created.',
+                                                                  'playlist_id': playlist_id})
         else:
             return Response(serializer.errors)
 
@@ -119,9 +121,10 @@ class PlaylistMusicViewSet(viewsets.ViewSet):
             playlist.music_count += 1
             playlist.length += recording.length
             # TODO: transaction
-            serializer.save()
+            association_id = serializer.save().id
             playlist.save()
-            return Response(status=status.HTTP_201_CREATED, data={'details': 'recording added to the playlist.'})
+            return Response(status=status.HTTP_201_CREATED, data={'details': 'recording added to the playlist.',
+                                                                  'association_id': association_id})
         else:
             return Response(serializer.errors)
 
