@@ -76,18 +76,6 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
-            name='PasswordResetToken',
-            fields=[
-                ('account', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, primary_key=True, serialize=False, to='Musicly.account')),
-                ('token', models.CharField(max_length=64, unique=True, validators=[django.core.validators.RegexValidator(code='no_match', message='Length has to be 64', regex='^.{64}$')])),
-                ('expires_at', models.DateTimeField()),
-            ],
-            options={
-                'db_table': 'musicly_password_reset_token',
-                'managed': True,
-            },
-        ),
-        migrations.CreateModel(
             name='Account',
             fields=[
                 ('id', models.BigAutoField(primary_key=True, serialize=False)),
@@ -108,6 +96,18 @@ class Migration(migrations.Migration):
             managers=[
                 ('objects', django.contrib.auth.models.UserManager()),
             ],
+        ),
+        migrations.CreateModel(
+            name='PasswordResetToken',
+            fields=[
+                ('account', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, primary_key=True, serialize=False, to='Musicly.account')),
+                ('token', models.CharField(max_length=64, unique=True, validators=[django.core.validators.RegexValidator(code='no_match', message='Length has to be 64', regex='^.{64}$')])),
+                ('expires_at', models.DateTimeField()),
+            ],
+            options={
+                'db_table': 'musicly_password_reset_token',
+                'managed': True,
+            },
         ),
         migrations.AddField(
             model_name='usermusic',

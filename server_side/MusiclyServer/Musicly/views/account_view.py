@@ -51,7 +51,11 @@ def send_confirmation_mail(account: Account, server_address):
 @api_view(['GET'])
 def resend_confirmation_mail(request):
     server_address = 'http://' + request.get_host()
-    send_confirmation_mail(request.user, server_address)
+    try:
+        send_confirmation_mail(request.user, server_address)
+    except SMTPException:
+        return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        data={'details': 'could not send a mail.'})
     return Response(status=status.HTTP_200_OK, data={'details': 'email has been sent.'})
 
 
@@ -64,10 +68,12 @@ def register(request):
 
     restricted_chars = '@\/\'"'
     for char in restricted_chars:
-        print(char)
         if char in account_info['username']:
             return Response(status=status.HTTP_403_FORBIDDEN,
                             data={'details': f'username cannot contain this set of characters: {restricted_chars}'})
+
+    if not _password_secure(account_info['password']):
+        return Response(status=status.HTTP_403_FORBIDDEN, data={'details': 'password is too weak.'})
 
     if serializer.is_valid():
         account = Account.objects.create(username=account_info['username'],
@@ -92,7 +98,10 @@ def register(request):
 @api_view(['GET'])
 @permission_classes([])
 def confirm_email(request, pk, token):
-    user = Account.objects.get(pk=pk)
+    try:
+        user = Account.objects.get(pk=pk)
+    except Account.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND, data={'details': 'user with this id does not exist.'})
     confirmation_token = sha256(user.email.encode()).hexdigest()
     if token == confirmation_token:
         user.email_confirmed = True
@@ -111,10 +120,10 @@ def confirm_email(request, pk, token):
 def create_reset_token(request):
     account_info = request.data
     try:
-        account = Account.objects.get(username=account_info['username'])
+        account = Account.objects.get(username=account_info['username_or_email'])
     except Account.DoesNotExist:
         try:
-            account = Account.objects.get(email=account_info['email'])
+            account = Account.objects.get(email=account_info['username_or_email'])
         except Account.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND,
                             data={'details': 'wrong account identifier'})
@@ -182,7 +191,7 @@ def change_password(request):
     else:
         return Response(status=status.HTTP_403_FORBIDDEN, data={'details': 'password does not meet security criteria.'})
 
-    return Response(status=status.HTTP_204_NO_CONTENT)
+    return Response(status=status.HTTP_200_OK, data={'details': 'password changed successfully.'})
 
 
 @api_view(['GET'])
@@ -194,8 +203,9 @@ def account_details(request):
 
 @api_view(['DELETE'])
 def delete_account(request):
+
     try:
-        account = request.user
+        account = Account.objects.get(pk=request.user.id)
     except Account.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND, data={'details': 'account does not exist.'})
 

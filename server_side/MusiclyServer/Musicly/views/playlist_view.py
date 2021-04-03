@@ -165,6 +165,9 @@ class PlaylistMusicViewSet(viewsets.ViewSet):
                 for music in music_list:
                     music.playlist_position -= 1
                     music.save()
+            playlist.length -= playlist_music.recording.length
+            playlist.music_count -= 1
             playlist_music.delete()
+            playlist.save()
 
         return Response(status=status.HTTP_200_OK, data={'details': 'removed from playlist.'})

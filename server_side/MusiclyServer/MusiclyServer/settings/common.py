@@ -95,7 +95,7 @@ DATABASES = {
 
 AUTH_USER_MODEL = 'Musicly.Account'
 # LOGIN_URL = '/admin/login/'
-# LOGIN_URL = '/api/login/'
+LOGIN_URL = '/api/login/'
 
 # Password validation
 # https://docs.djangoproject.com/en/3.1/ref/settings/#auth-password-validators
@@ -128,8 +128,8 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
-
 STATIC_URL = '/static/'
+
 # SECURE_SSL_REDIRECT = True  # Prod only
 # SESSION_COOKIE_SECURE = True
 # CSRF_COOKIE_SECURE = True
