@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Artist, Account, Recording, Playlist, PlaylistMusic, UserMusic
+from collections import OrderedDict
 
 
 class ArtistSerializer(serializers.ModelSerializer):
@@ -68,6 +69,29 @@ class PlaylistMusicListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Playlist
         fields = ['id', 'account', 'name', 'length', 'music_count', 'recordings']
+
+    def get_recordings_list(self, instance: Playlist):
+        ret = list()
+        playlist_music = instance.recordings.through.objects.filter(playlist=instance)
+        for record in playlist_music:
+            data = OrderedDict()
+            data['association_id'] = record.id
+            data['recording_id'] = record.recording_id
+            data['title'] = record.recording.title
+            data['length'] = record.recording.length
+            ret.append(data)
+        return ret
+
+    def to_representation(self, instance: Playlist):
+        """Convert `username` to lowercase."""
+        ret = OrderedDict()
+        ret['id'] = instance.id
+        ret['account'] = instance.account.id
+        ret['name'] = instance.name
+        ret['length'] = instance.length
+        ret['music_count'] = instance.music_count
+        ret['recordings'] = self.get_recordings_list(instance)
+        return ret
 
 
 class PlaylistMusicSerializer(serializers.ModelSerializer):
