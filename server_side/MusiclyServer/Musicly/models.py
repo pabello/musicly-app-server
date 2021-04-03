@@ -6,6 +6,7 @@
 #   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
 # Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
+from django.db.models import CheckConstraint, Q, F
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.utils.timezone import now
@@ -88,6 +89,10 @@ class PasswordResetToken(models.Model):
     class Meta:
         managed = True
         db_table = 'musicly_password_reset_token'
+        constraints = [
+            CheckConstraint(check=Q(expires_at__gt=now),
+                            name='password_token_expiration_time_check')
+        ]
 
     def __str__(self):
         return f'token for user {self.account}'
@@ -106,6 +111,12 @@ class Playlist(models.Model):
         managed = True
         db_table = 'musicly_playlist'
         unique_together = ('account', 'name')
+        constraints = [
+            CheckConstraint(check=Q(length__gte=0),
+                            name='playlist_length_check'),
+            CheckConstraint(check=Q(music_count__gte=0),
+                            name='playlist_music_count_check')
+        ]
 
     def __str__(self):
         return self.name
@@ -115,13 +126,17 @@ class PlaylistMusic(models.Model):
     id = models.BigAutoField(primary_key=True)
     playlist = models.ForeignKey(Playlist, models.CASCADE)
     recording = models.ForeignKey(Recording, models.CASCADE)
-    playlist_position = models.IntegerField('Position in playlist')
+    playlist_position = models.IntegerField(default=1, verbose_name='Position in playlist')
 
     class Meta:
         managed = True
         db_table = 'musicly_playlist_music'
         unique_together = ('playlist', 'playlist_position')
         ordering = ['playlist_position']  # Might require unique set (playlist, position) as position is not unique
+        constraints = [
+            CheckConstraint(check=Q(playlist_position__gte=1),
+                            name='playlist_music_position_check')
+        ]
 
     def __str__(self):
         return f'({self.id}) {self.recording} in playlist {self.playlist} on position {self.playlist_position}'
@@ -131,13 +146,17 @@ class UserMusic(models.Model):
     id = models.BigAutoField(primary_key=True)
     account = models.ForeignKey(Account, models.CASCADE)
     recording = models.ForeignKey(Recording, models.CASCADE)
-    like_status = models.IntegerField()
-    listen_count = models.IntegerField()
+    like_status = models.IntegerField(choices=[(-1, 'dislike'), (0, 'neutral'), (1, 'like')], default=0)
+    listen_count = models.IntegerField(default=0)
 
     class Meta:
         managed = True
         db_table = 'musicly_user_music'
         unique_together = ('account', 'recording')
+        constraints = [
+            CheckConstraint(check=Q(listen_count__gte=0),
+                            name='usermusic_listen_count_check')
+        ]
 
     def __str__(self):
         return f'{self.recording} listened by user {self.account}'
