@@ -36,7 +36,6 @@ class PlaylistViewSet(viewsets.ViewSet):
 
         if serializer.is_valid():
             playlist_id = serializer.save().id
-            print(playlist_id)
             return Response(status=status.HTTP_201_CREATED, data={'details': 'playlist created.',
                                                                   'playlist_id': playlist_id})
         else:
