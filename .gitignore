@@ -133,6 +133,3 @@ dmypy.json
 # Project specific files
 *mbslave
 useful/
-*temp_*
-*mb-env/
-*musicly-env/

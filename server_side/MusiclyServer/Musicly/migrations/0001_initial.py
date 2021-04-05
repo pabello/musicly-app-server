@@ -123,7 +123,7 @@ class Migration(migrations.Migration):
             name='PlaylistMusic',
             fields=[
                 ('id', models.BigAutoField(primary_key=True, serialize=False)),
-                ('playlist_position', models.IntegerField(default=0, verbose_name='Position in playlist')),
+                ('playlist_position', models.IntegerField(default=1, verbose_name='Position in playlist')),
                 ('playlist', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='Musicly.playlist')),
                 ('recording', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='Musicly.recording')),
             ],
