@@ -18,7 +18,6 @@ from random import getrandbits
 from hashlib import sha256
 from smtplib import SMTPException
 
-
 password_policy = PasswordPolicy.from_names(
     length=8,
     uppercase=1,
@@ -64,7 +63,6 @@ def register(request):
 
     restricted_chars = '@\/\'"'
     for char in restricted_chars:
-        print(char)
         if char in account_info['username']:
             return Response(status=status.HTTP_403_FORBIDDEN,
                             data={'details': f'username cannot contain this set of characters: {restricted_chars}'})
@@ -111,10 +109,10 @@ def confirm_email(request, pk, token):
 def create_reset_token(request):
     account_info = request.data
     try:
-        account = Account.objects.get(username=account_info['username'])
+        account = Account.objects.get(username=account_info['username_or_email'])
     except Account.DoesNotExist:
         try:
-            account = Account.objects.get(email=account_info['email'])
+            account = Account.objects.get(email=account_info['username_or_email'])
         except Account.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND,
                             data={'details': 'wrong account identifier'})
@@ -142,7 +140,7 @@ def create_reset_token(request):
                 f'{reset_token.token}\n',
         html_message=render_to_string('password_reset_mail.html', {'token': reset_token.token}),
         from_email='"noreply@musicly.com" <noreply@musicly.com>',
-        recipient_list=['waclawiak.pawel@wp.pl'],
+        recipient_list=[account.email],
         fail_silently=False
     )
     return Response(status=status.HTTP_201_CREATED)

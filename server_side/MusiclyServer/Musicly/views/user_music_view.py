@@ -28,9 +28,10 @@ def add_music_reaction(request, pk):
                                               like_status=request.data['like_status'], listen_count=0)
 
     try:
-        user_music_id = user_music.save().id
+        user_music.save()
+        user_music_id = user_music.id
     except DatabaseError:
         return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        data={'details': 'server error could not change like status.',
-                              'user_music_id': user_music_id})
-    return Response(status=status.HTTP_200_OK, data={'details': 'like status changed.'})
+                        data={'details': 'server error could not change like status.'})
+    return Response(status=status.HTTP_200_OK, data={'details': 'like status changed.',
+                                                     'user_music_id': user_music_id})
