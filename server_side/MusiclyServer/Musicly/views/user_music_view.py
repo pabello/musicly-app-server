@@ -8,7 +8,7 @@ from django.db import DatabaseError
 
 @api_view(['GET'])
 def user_music_list(request):
-    user_music = UserMusic.objects.filter(account=request.user)
+    user_music = UserMusic.objects.filter(account=request.user).exclude(like_status=0)
     serializer = UserMusicSerializer(user_music, many=True)
     data = serializer.data
 
