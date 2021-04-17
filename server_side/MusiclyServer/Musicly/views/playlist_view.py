@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from ..models import Playlist, PlaylistMusic, Recording
 from ..serializers import PlaylistSerializer, PlaylistMusicSerializer, PlaylistMusicListSerializer
 from django.db import transaction, DatabaseError
+from django.db.utils import IntegrityError
 
 
 def get_playlist_music_count(playlist: Playlist):
@@ -14,9 +15,10 @@ def get_playlist_music_count(playlist: Playlist):
 class PlaylistViewSet(viewsets.ViewSet):
     @staticmethod
     def list(request):
-        playlists = get_list_or_404(Playlist, account_id=request.user)
+        playlists = Playlist.objects.filter(account_id=request.user)
         serializer = PlaylistSerializer(playlists, many=True)
         return Response(serializer.data)
+
 
     @staticmethod
     def retrieve(request, pk):
@@ -33,10 +35,11 @@ class PlaylistViewSet(viewsets.ViewSet):
         serializer = PlaylistSerializer(data=playlist_data)
 
         if serializer.is_valid():
-            serializer.save()
-            return Response(status=status.HTTP_201_CREATED, data={'details': 'playlist created.'})
+            playlist_id = serializer.save().id
+            return Response(status=status.HTTP_201_CREATED, data={'details': 'playlist created.',
+                                                                  'playlist_id': playlist_id})
         else:
-            return Response(serializer.errors)
+            return Response(status=status.HTTP_403_FORBIDDEN, data=serializer.errors)
 
     @staticmethod
     def partial_update(request, pk):
@@ -119,9 +122,10 @@ class PlaylistMusicViewSet(viewsets.ViewSet):
             playlist.music_count += 1
             playlist.length += recording.length
             # TODO: transaction
-            serializer.save()
+            association_id = serializer.save().id
             playlist.save()
-            return Response(status=status.HTTP_201_CREATED, data={'details': 'recording added to the playlist.'})
+            return Response(status=status.HTTP_201_CREATED, data={'details': 'recording added to the playlist.',
+                                                                  'association_id': association_id})
         else:
             return Response(serializer.errors)
 
@@ -142,12 +146,18 @@ class PlaylistMusicViewSet(viewsets.ViewSet):
                                                   playlist_position__gte=min(old_position, new_position),
                                                   playlist_position__lte=max(old_position, new_position))
 
-        with transaction.atomic():
-            for music in music_list:
-                music.playlist_position += change
-                music.save()
-            playlist_music.playlist_position = new_position
-            playlist_music.save()
+        try:
+            with transaction.atomic():
+                playlist_music.playlist_position = 0
+                playlist_music.save()
+                for music in music_list[::(change*(-1))]:
+                    music.playlist_position += change
+                    music.save()
+                playlist_music.playlist_position = new_position
+                playlist_music.save()
+        except IntegrityError:
+            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            data={'details': 'could not change the position.'})
 
         return Response(status=status.HTTP_200_OK, data={'details': 'position changed.'})
 
@@ -161,13 +171,13 @@ class PlaylistMusicViewSet(viewsets.ViewSet):
         music_list = PlaylistMusic.objects.filter(playlist_id=playlist.id,
                                                   playlist_position__gt=playlist_music.playlist_position)
         with transaction.atomic():
+            playlist.length -= playlist_music.recording.length
+            playlist.music_count -= 1
+            playlist_music.delete()
             if len(music_list):
                 for music in music_list:
                     music.playlist_position -= 1
                     music.save()
-            playlist.length -= playlist_music.recording.length
-            playlist.music_count -= 1
-            playlist_music.delete()
             playlist.save()
 
         return Response(status=status.HTTP_200_OK, data={'details': 'removed from playlist.'})

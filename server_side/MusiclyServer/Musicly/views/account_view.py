@@ -18,7 +18,6 @@ from random import getrandbits
 from hashlib import sha256
 from smtplib import SMTPException
 
-
 password_policy = PasswordPolicy.from_names(
     length=8,
     uppercase=1,
@@ -151,7 +150,7 @@ def create_reset_token(request):
                 f'{reset_token.token}\n',
         html_message=render_to_string('password_reset_mail.html', {'token': reset_token.token}),
         from_email='"noreply@musicly.com" <noreply@musicly.com>',
-        recipient_list=['waclawiak.pawel@wp.pl'],
+        recipient_list=[account.email],
         fail_silently=False
     )
     return Response(status=status.HTTP_201_CREATED)
