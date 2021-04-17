@@ -171,10 +171,13 @@ class PlaylistMusicViewSet(viewsets.ViewSet):
         music_list = PlaylistMusic.objects.filter(playlist_id=playlist.id,
                                                   playlist_position__gt=playlist_music.playlist_position)
         with transaction.atomic():
+            playlist.length -= playlist_music.recording.length
+            playlist.music_count -= 1
             playlist_music.delete()
             if len(music_list):
                 for music in music_list:
                     music.playlist_position -= 1
                     music.save()
+            playlist.save()
 
         return Response(status=status.HTTP_200_OK, data={'details': 'removed from playlist.'})
