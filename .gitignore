@@ -135,6 +135,9 @@ dmypy.json
 useful/
 *mb-env/
 *musicly-env/
+*server_side/MusiclyServer/static
 
 # Any custom temporary files
 temp_*
+
+server_side/MusiclyServer/media/media.gif
