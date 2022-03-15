@@ -31,7 +31,7 @@ ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '0.0.0.0', '10.77.10.24', '10.0.2.2']
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    # 'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -129,7 +129,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 STATIC_URL = '/static/'
-STATIC_ROOT = path.join(BASE_DIR, 'static/')  # defining location for staatic files
+STATIC_ROOT = path.join(BASE_DIR, 'static/')  # defining location for static files
 
 # SECURE_SSL_REDIRECT = True  # Prod only
 # SESSION_COOKIE_SECURE = True

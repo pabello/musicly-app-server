@@ -1,5 +1,8 @@
+import difflib
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, get_list_or_404
-from rest_framework import viewsets
+from rest_framework import viewsets, status
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from json import loads as load_json
 from ..models import Artist, Recording
@@ -35,4 +38,27 @@ class RecodingViewSet(viewsets.ViewSet):
         serializer = RecordingDetailsSerializer(recording)
         return Response(serializer.data)
 
-# TODO: when searching return both artists and recordings - its more practical
+
+@api_view(['POST'])
+def search_music_or_artist(request):
+    key_word = request.data['search_phrase']
+
+    recordings_queryset = Recording.objects.filter(
+        # Q(title__icontains=key_word) | Q(artists_list__stage_name__icontains=key_word))
+        Q(title__icontains=key_word))
+    recordings = RecordingSerializer(recordings_queryset, many=True).data
+    for recording in recordings:
+        recording['name'] = recording.pop('title', None)
+        recording['type'] = 'recording'
+        recording['length'] = recording.pop('length', None)
+
+    artists_queryser = Artist.objects.filter(stage_name__icontains=key_word)
+    artists = ArtistSerializer(artists_queryser, many=True).data
+    for artist in artists:
+        artist['name'] = artist.pop('stage_name', None)
+        artist['type'] = 'artist'
+
+    merged = artists + recordings
+    ordered = sorted(merged, key=lambda x: difflib.SequenceMatcher(None, x['name'], key_word).ratio(), reverse=True)
+
+    return Response(status=status.HTTP_200_OK, data=ordered)

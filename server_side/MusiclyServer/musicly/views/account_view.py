@@ -11,7 +11,8 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
-from django.db import DatabaseError
+from django.db import DatabaseError, IntegrityError
+from django.contrib.auth import authenticate
 
 from rest_framework.authtoken.models import Token
 from random import getrandbits
@@ -34,14 +35,14 @@ def _password_secure(password: str):
 
 def send_confirmation_mail(account: Account, server_address):
     send_mail(
-        subject='Email confirmation',
+        subject='Musicly email confirmation',
         message='This is an automated email confirmation message from musicly.\n\n'
                 'Go to the link below to confirm your email address for musicly account.'
                 f'{server_address}/api/confirmEmail/{account.id}/{sha256(account.email.encode()).hexdigest()}\n',
         html_message=render_to_string('email_confirm_mail.html', {'server_address': server_address,
                                                                   'account_id': account.id,
                                                                   'token': sha256(account.email.encode()).hexdigest()}),
-        from_email='"noreply@musicly.com" <noreply@musicly.com>',
+        from_email='"Musicly@musicly.com" <musicly@musicly.com>',
         recipient_list=[account.email],
         fail_silently=False
     )
@@ -69,10 +70,11 @@ def register(request):
     for char in restricted_chars:
         if char in account_info['username']:
             return Response(status=status.HTTP_403_FORBIDDEN,
-                            data={'details': f'username cannot contain this set of characters: {restricted_chars}'})
+                            data={'restricted_chars': restricted_chars,
+                                  'characters': f'username cannot contain this set of characters: {restricted_chars}'})
 
     if not _password_secure(account_info['password']):
-        return Response(status=status.HTTP_403_FORBIDDEN, data={'details': 'password is too weak.'})
+        return Response(status=status.HTTP_403_FORBIDDEN, data={'password': 'password is too weak.'})
 
     if serializer.is_valid():
         account = Account.objects.create(username=account_info['username'],
@@ -80,7 +82,7 @@ def register(request):
         account.set_password(account_info['password'])
         try:
             account.save()
-            token = {"token": Token.objects.get(user=account).key}
+            token = Token.objects.get(user=account).key
         except DatabaseError:
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -88,8 +90,10 @@ def register(request):
             send_confirmation_mail(account, server_address)
         except SMTPException:
             return Response(status=status.HTTP_201_CREATED, data={'details': 'account created',
-                                                                  'errors': 'could not send confirmation email'})
-        return Response(status=status.HTTP_201_CREATED, data=token)
+                                                                  'errors': 'could not send confirmation email',
+                                                                  'username': account.username,
+                                                                  'token': token})
+        return Response(status=status.HTTP_201_CREATED, data={'username': account.username, 'token': token})
     else:
         return Response(status=status.HTTP_403_FORBIDDEN, data=serializer.errors)
 
@@ -141,7 +145,6 @@ def create_reset_token(request):
     except DatabaseError:
         return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR, data={'details': 'could not create a token.'})
 
-    # TODO: implement possibility for password change when you are logged in
     send_mail(
         subject='musicly password reset',
         message='This is an automated password reset message from musicly.\n'
@@ -162,11 +165,20 @@ def change_password(request):
     data = request.data
 
     missing_data = {}
-    for argument in ['password_reset_token', 'new_password']:
+    for argument in ['username_or_email', 'password_reset_token', 'new_password']:
         if argument not in data.keys():
             missing_data[argument] = ['value has not been provided.']
     if len(missing_data.keys()):
         return Response(status=400, data=missing_data)
+
+    try:
+        implied_account = Account.objects.get(username=data['username_or_email'])
+    except Account.DoesNotExist:
+        try:
+            implied_account = Account.objects.get(email=data['username_or_email'])
+        except Account.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND,
+                            data={'error_source': 'account', 'details': 'wrong account identifier'})
 
     reset_token = data['password_reset_token']
     password = data['new_password']
@@ -174,21 +186,29 @@ def change_password(request):
     try:
         password_reset_token = PasswordResetToken.objects.get(token=reset_token)
         if time.now() > password_reset_token.expires_at:
-            return Response(status=status.HTTP_403_FORBIDDEN, data={'details': 'password reset token has expired.'})
+            return Response(status=status.HTTP_403_FORBIDDEN,
+                            data={'error_source': 'token', 'details': 'password reset token has expired.'})
     except PasswordResetToken.DoesNotExist:
-        return Response(status=status.HTTP_403_FORBIDDEN, data={'details': 'password reset token does not exist.'})
+        return Response(status=status.HTTP_403_FORBIDDEN,
+                        data={'error_source': 'token', 'details': 'password reset token does not exist.'})
 
     try:
         account = password_reset_token.account
     except Account.DoesNotExist:
-        return Response(status=status.HTTP_403_FORBIDDEN, data={'details': 'reset token not assigned to any account.'})
+        return Response(status=status.HTTP_403_FORBIDDEN,
+                        data={'error_source': 'token', 'details': 'reset token not assigned to any account.'})
+
+    if implied_account != account:
+        return Response(status=status.HTTP_403_FORBIDDEN,
+                        data={'error_source': 'token', 'details': 'reset token not assigned to your account.'})
 
     if _password_secure(password):
         account.set_password(password)
         account.save()
         password_reset_token.delete()
     else:
-        return Response(status=status.HTTP_403_FORBIDDEN, data={'details': 'password does not meet security criteria.'})
+        return Response(status=status.HTTP_403_FORBIDDEN,
+                        data={'error_source': 'password', 'details': 'password does not meet security criteria.'})
 
     return Response(status=status.HTTP_200_OK, data={'details': 'password changed successfully.'})
 
@@ -200,19 +220,47 @@ def account_details(request):
     return Response(status=status.HTTP_200_OK, data=serializer.data)
 
 
-@api_view(['DELETE'])
-def delete_account(request):
+@api_view(['PATCH'])
+def change_username(request):
+    account = request.user
+    if 'new_name' not in request.data.keys():
+        return Response(status=status.HTTP_403_FORBIDDEN, data={'error': {'source': 'username', 'cause': 'empty'}})
+    new_name = request.data['new_name']
+    account.username = new_name
 
     try:
-        account = Account.objects.get(pk=request.user.id)
-    except Account.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND, data={'details': 'account does not exist.'})
-
-    if account.delete():
-        return Response(status=status.HTTP_200_OK, data={'details': 'account deleted.'})
-    else:
+        account.save()
+        return Response(status=status.HTTP_200_OK, data={'details': 'username changed'})
+    except IntegrityError:
+        return Response(status=status.HTTP_403_FORBIDDEN, data={'error': {'source': 'username', 'cause': 'in use'}})
+    except DatabaseError:
         return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        data={'details': 'server error, could not delete the account.'})
+                        data={'details': 'server error, could not change the username'})
+
+
+@api_view(['DELETE'])
+def delete_account(request):
+    user = request.user
+    if 'password' not in request.data.keys():
+        return Response(status=status.HTTP_403_FORBIDDEN,
+                        data={'details': 'password is required to confirm this operation'})
+
+    password = request.data['password']
+    auth_user = authenticate(request=request, username=user.username, password=password)
+
+    if auth_user:
+        try:
+            account = Account.objects.get(pk=request.user.id)
+        except Account.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND, data={'details': 'account does not exist.'})
+
+        if account.delete():
+            return Response(status=status.HTTP_200_OK, data={'details': 'account deleted.'})
+        else:
+            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            data={'details': 'server error, could not delete the account.'})
+    else:
+        return Response(status=status.HTTP_403_FORBIDDEN, data={'details': 'invalid password'})
 
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)

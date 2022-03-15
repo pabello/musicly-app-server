@@ -1,10 +1,15 @@
 from django.shortcuts import get_object_or_404, get_list_or_404
 from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from ..models import Playlist, PlaylistMusic, Recording
 from ..serializers import PlaylistSerializer, PlaylistMusicSerializer, PlaylistMusicListSerializer
 from django.db import transaction, DatabaseError
 from django.db.utils import IntegrityError
+from django.utils.timezone import now
+from json import loads as load_json
+
+from ..utils import unpack_common_filters
 
 
 def get_playlist_music_count(playlist: Playlist):
@@ -14,11 +19,13 @@ def get_playlist_music_count(playlist: Playlist):
 
 class PlaylistViewSet(viewsets.ViewSet):
     @staticmethod
-    def list(request):
-        playlists = Playlist.objects.filter(account_id=request.user)
+    @action(methods=['POST'], detail=False)
+    def filtered_list(request):
+        order_by, top = unpack_common_filters(request, 'playlist')
+
+        playlists = Playlist.objects.filter(account_id=request.user).order_by(order_by)[:top]
         serializer = PlaylistSerializer(playlists, many=True)
         return Response(serializer.data)
-
 
     @staticmethod
     def retrieve(request, pk):
@@ -49,6 +56,7 @@ class PlaylistViewSet(viewsets.ViewSet):
 
         new_name = request.data['name']
         playlist.name = new_name
+        playlist.modification_timestamp = now();
         try:
             playlist.save()
             return Response(status=status.HTTP_200_OK, data={'details': 'playlist name updated.'})
@@ -110,6 +118,14 @@ class PlaylistMusicViewSet(viewsets.ViewSet):
         if playlist.account != request.user:
             return Response(status=status.HTTP_403_FORBIDDEN, data={'details': 'not the owner of the playlist.'})
 
+        if PlaylistMusic.objects.filter(playlist_id=playlist.id, recording_id=recording.id):
+            if 'add_duplicate' in request.data.keys():
+                add_duplicate = request.data['add_duplicate']
+                if not add_duplicate:
+                    return Response(status=status.HTTP_400_BAD_REQUEST, data={'details': 'not adding duplicate'})
+            else:
+                return Response(status=status.HTTP_409_CONFLICT, data={'details': 'recording already added to playlist'})
+
         music_count = get_playlist_music_count(playlist)
         playlist_music = {
             'playlist': playlist.id,
@@ -118,11 +134,10 @@ class PlaylistMusicViewSet(viewsets.ViewSet):
         }
 
         serializer = PlaylistMusicSerializer(data=playlist_music)
-        # TODO: could ask user if they really want to add to playlist when the recording is already there
         if serializer.is_valid():
             playlist.music_count += 1
             playlist.length += recording.length
-            # TODO: transaction
+            playlist.modification_timestamp = now()
             association_id = serializer.save().id
             playlist.save()
             return Response(status=status.HTTP_201_CREATED, data={'details': 'recording added to the playlist.',
@@ -179,6 +194,7 @@ class PlaylistMusicViewSet(viewsets.ViewSet):
                 for music in music_list:
                     music.playlist_position -= 1
                     music.save()
+            playlist.modification_timestamp = now()
             playlist.save()
 
         return Response(status=status.HTTP_200_OK, data={'details': 'removed from playlist.'})

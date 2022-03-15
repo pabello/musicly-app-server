@@ -115,7 +115,7 @@ class ObtainAuthToken(APIView):
         except DatabaseError:
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             data={'details': 'server error, could not authenticate user.'})
-        return Response({'token': token.key})
+        return Response({'username': user.username, 'token': token.key})
 
 
 obtain_auth_token = ObtainAuthToken.as_view()

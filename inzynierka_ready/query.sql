@@ -1,0 +1,1 @@
+SELECT * FROM musicly_artist WHERE lower(stage_name) IN ('maroon 5');

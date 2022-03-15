@@ -5,6 +5,7 @@
 #   * Make sure each ForeignKey and OneToOneField has `on_delete` set to the desired behavior
 #   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
 # Feel free to rename the models, but don't rename db_table values or field names.
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models import CheckConstraint, Q
 from django.contrib.auth.models import AbstractUser
@@ -104,6 +105,7 @@ class Playlist(models.Model):
     name = models.CharField(max_length=64, blank=False, null=False)
     length = models.IntegerField(default=0, verbose_name='Total playtime of the playlist playlist')
     music_count = models.IntegerField(default=0, verbose_name='Number of recordings in the playlist')
+    modification_timestamp = models.DateTimeField(null=False, default=now, verbose_name='Latest playlist change time')
 
     recordings = models.ManyToManyField(Recording, related_name='belong_to_playlist', through='PlaylistMusic')
 
@@ -115,7 +117,10 @@ class Playlist(models.Model):
             CheckConstraint(check=Q(length__gte=0),
                             name='playlist_length_check'),
             CheckConstraint(check=Q(music_count__gte=0),
-                            name='playlist_music_count_check')
+                            name='playlist_music_count_check'),
+            # CheckConstraint(check=Q(modification_timestamp__lte=now),
+            #                 name='playlist_past_timestamp')
+            # Does not work for some reason, contrary to exact same constraint in the UserMusic class
         ]
 
     def __str__(self):
@@ -147,16 +152,28 @@ class UserMusic(models.Model):
     account = models.ForeignKey(Account, models.CASCADE)
     recording = models.ForeignKey(Recording, models.CASCADE)
     like_status = models.IntegerField(choices=[(-1, 'dislike'), (0, 'neutral'), (1, 'like')], default=0)
-    listen_count = models.IntegerField(default=0)
+    status_timestamp = models.DateTimeField(null=False, default=now, verbose_name='Latest status change time')
 
     class Meta:
         managed = True
         db_table = 'musicly_user_music'
         unique_together = ('account', 'recording')
         constraints = [
-            CheckConstraint(check=Q(listen_count__gte=0),
-                            name='usermusic_listen_count_check')
+            CheckConstraint(check=Q(status_timestamp__lte=now),
+                            name='usermusic_past_timestamp')
         ]
 
     def __str__(self):
         return f'{self.recording} listened by user {self.account}'
+
+
+class MusicRecommendations(models.Model):
+    account = models.OneToOneField(Account, models.CASCADE, primary_key=True)
+    recommendations = ArrayField(base_field=models.BigIntegerField(), size=30)
+
+    class Meta:
+        managed = True
+        db_table = 'musicly_music_recommendations'
+
+    def __str__(self):
+        return f'recommendations for user {self.account}'

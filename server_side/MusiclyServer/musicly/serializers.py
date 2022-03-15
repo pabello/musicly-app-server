@@ -39,12 +39,6 @@ class RecordingDetailsSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'length', 'artists_list']
 
 
-class AccountSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Account
-        fields = ['id', 'username']
-
-
 class AccountDetailsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Account
@@ -60,7 +54,7 @@ class AccountLifecycleSerializer(serializers.ModelSerializer):
 class PlaylistSerializer(serializers.ModelSerializer):
     class Meta:
         model = Playlist
-        fields = ['id', 'account', 'name', 'length', 'music_count']
+        fields = ['id', 'account', 'name', 'length', 'music_count', 'modification_timestamp']
 
 
 class PlaylistMusicListSerializer(serializers.ModelSerializer):
@@ -68,9 +62,10 @@ class PlaylistMusicListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Playlist
-        fields = ['id', 'account', 'name', 'length', 'music_count', 'recordings']
+        fields = ['id', 'account', 'name', 'length', 'music_count', 'modification_timestamp', 'recordings']
 
-    def get_recordings_list(self, instance: Playlist):
+    @staticmethod
+    def get_recordings_list(instance: Playlist):
         ret = list()
         playlist_music = instance.recordings.through.objects.filter(playlist=instance)
         for record in playlist_music:
@@ -90,6 +85,7 @@ class PlaylistMusicListSerializer(serializers.ModelSerializer):
         ret['name'] = instance.name
         ret['length'] = instance.length
         ret['music_count'] = instance.music_count
+        ret['modification_timestamp'] = instance.modification_timestamp
         ret['recordings'] = self.get_recordings_list(instance)
         return ret
 
@@ -103,4 +99,16 @@ class PlaylistMusicSerializer(serializers.ModelSerializer):
 class UserMusicSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserMusic
-        fields = ['id', 'recording_id', 'like_status', 'listen_count']
+        fields = ['id', 'recording_id', 'like_status', 'status_timestamp']
+
+
+class UserMusicRecommendationsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserMusic
+        fields = ['account_id', 'recording_id', 'like_status']
+
+
+class UserMusicIdSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserMusic
+        fields = ['recording_id']
